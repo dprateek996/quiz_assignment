@@ -1,1 +1,16 @@
-/.vscode
+# Environment
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+
+# Misc
+*.pdf

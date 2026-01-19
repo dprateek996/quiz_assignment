@@ -1,3 +1,13 @@
-node_modules
-# Keep environment variables out of version control
+# Environment
 .env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Misc
+*.pdf

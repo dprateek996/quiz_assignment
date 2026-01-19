@@ -12,11 +12,12 @@ datasource db {
 model Chapter {
   id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   gemini_file_id String         @unique @map("gemini_file_id")
-  content_text   String?        @db.Text  // Extracted text from PDF
+  content_text   String?        @db.Text
+  content_hash   String?        @unique  // Idempotency Key
   subject        String?        @db.VarChar(50)
   class_level    Int?           @map("class_level")
   title          String?        @db.VarChar(255)
-  topics         Json?          // Stores ["topic1", "topic2"]
+  topics         Json?          
   status         String?        @default("indexed") @db.VarChar(20)
   created_at     DateTime       @default(now()) @db.Timestamp()
   
@@ -28,9 +29,9 @@ model Chapter {
 
 model UserProgress {
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id           String   @db.Uuid
+  user_id           String   // Accepts "demo-user"
   chapter_id        String   @db.Uuid
-  time_spent        Int?     // Seconds
+  time_spent        Int?     
   scroll_progress   Decimal? @db.Decimal(4, 2)
   is_completed      Boolean  @default(false)
   completion_method String?  @db.VarChar(50)
@@ -45,7 +46,7 @@ model Quiz {
   id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   chapter_id   String        @db.Uuid
   difficulty   String?       @db.VarChar(20)
-  questions    Json          // Stores array of Question objects
+  questions    Json          
   variant_hash String?       @db.VarChar(64)
   created_at   DateTime      @default(now()) @db.Timestamp()
 
@@ -57,12 +58,12 @@ model Quiz {
 
 model QuizAttempt {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     String   @db.Uuid
+  user_id     String   // Accepts "demo-user"
   quiz_id     String   @db.Uuid
-  answers     Json?    // User answers {q1: "A", q2: "text"}
-  scores      Json?    // Per question scores
+  answers     Json?    
+  scores      Json?    
   total_score Decimal? @db.Decimal(4, 2)
-  weak_topics Json?    // ["algebra", "geometry"]
+  weak_topics Json?    
   created_at  DateTime @default(now()) @db.Timestamp()
 
   quiz Quiz @relation(fields: [quiz_id], references: [id])

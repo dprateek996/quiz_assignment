@@ -1,10 +1,19 @@
+# Core Framework
 fastapi
 uvicorn
+
+# Database
 prisma
+
+# Request Handling
 python-multipart
+
+# Configuration
 pydantic-settings
 python-dotenv
-aiofiles
-langchain-google-genai
-langchain-core
-langchain
+
+# AI/LLM (Google Gemini)
+google-generativeai
+
+# Rate Limiting
+slowapi
