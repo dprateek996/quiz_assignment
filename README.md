@@ -64,7 +64,7 @@ Apart from the required features in the assignment, I added a few extra things o
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Vue.js 3, Bootstrap 5 |
+| **Frontend** | Html, CSS |
 | **Backend** | FastAPI (Python) |
 | **Database** | PostgreSQL (Neon) |
 | **ORM** | Prisma Client Python |
@@ -78,7 +78,7 @@ Apart from the required features in the assignment, I added a few extra things o
 ```
 quiz_assignment/
 ├── frontend/
-│   └── index.html          # Single-page Vue.js application
+│   └── index.html         #Single Page Application Using HTML,CSS 
 │
 ├── backend/
 │   ├── app/
@@ -111,7 +111,6 @@ quiz_assignment/
 ### Prerequisites
 
 - Python 3.12+
-- Node.js (optional, for serving frontend)
 - PostgreSQL database (or use [Neon](https://neon.tech))
 - Google Gemini API Key
 
