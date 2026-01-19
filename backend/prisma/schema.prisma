@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-py"
+  recursive_type_depth = 5
+  enable_experimental_decimal = true
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Chapter {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gemini_file_id String         @unique @map("gemini_file_id")
+  content_text   String?        @db.Text  // Extracted text from PDF
+  subject        String?        @db.VarChar(50)
+  class_level    Int?           @map("class_level")
+  title          String?        @db.VarChar(255)
+  topics         Json?          // Stores ["topic1", "topic2"]
+  status         String?        @default("indexed") @db.VarChar(20)
+  created_at     DateTime       @default(now()) @db.Timestamp()
+  
+  quizzes        Quiz[]
+  user_progress  UserProgress[]
+
+  @@map("chapters")
+}
+
+model UserProgress {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String   @db.Uuid
+  chapter_id        String   @db.Uuid
+  time_spent        Int?     // Seconds
+  scroll_progress   Decimal? @db.Decimal(4, 2)
+  is_completed      Boolean  @default(false)
+  completion_method String?  @db.VarChar(50)
+  updated_at        DateTime @default(now()) @updatedAt @db.Timestamp()
+
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
+
+  @@map("user_progress")
+}
+
+model Quiz {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chapter_id   String        @db.Uuid
+  difficulty   String?       @db.VarChar(20)
+  questions    Json          // Stores array of Question objects
+  variant_hash String?       @db.VarChar(64)
+  created_at   DateTime      @default(now()) @db.Timestamp()
+
+  chapter      Chapter       @relation(fields: [chapter_id], references: [id])
+  attempts     QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model QuizAttempt {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  quiz_id     String   @db.Uuid
+  answers     Json?    // User answers {q1: "A", q2: "text"}
+  scores      Json?    // Per question scores
+  total_score Decimal? @db.Decimal(4, 2)
+  weak_topics Json?    // ["algebra", "geometry"]
+  created_at  DateTime @default(now()) @db.Timestamp()
+
+  quiz Quiz @relation(fields: [quiz_id], references: [id])
+
+  @@map("quiz_attempts")
+}

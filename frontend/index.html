@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator - Demo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { background-color: #f8f9fa; padding-top: 20px; }
+        .step-card { max-width: 800px; margin: 0 auto 20px auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .debug-box { background: #333; color: #0f0; padding: 10px; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container pb-5">
+    <h2 class="text-center mb-4">📚 NCERT AI Quiz Platform</h2>
+
+    <!-- STEP 1: UPLOAD -->
+    <div class="card step-card" v-if="step === 1">
+        <div class="card-header bg-primary text-white">Step 1: Upload Chapter PDF</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Subject</label>
+                <input type="text" class="form-control" v-model="uploadData.subject" placeholder="e.g. Science">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Chapter Title</label>
+                <input type="text" class="form-control" v-model="uploadData.title" placeholder="e.g. Chemical Reactions">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">PDF File</label>
+                <input type="file" class="form-control" @change="handleFileUpload" accept="application/pdf">
+            </div>
+            <button type="button" class="btn btn-primary w-100" @click="uploadChapter" :disabled="loading">
+                <span v-if="loading" class="loader me-2"></span> Upload & Index (Gemini)
+            </button>
+        </div>
+    </div>
+
+    <!-- STEP 2: DASHBOARD (Reading & Generate) -->
+    <div class="card step-card" v-if="step === 2">
+        <div class="card-header bg-success text-white">Step 2: Chapter Dashboard</div>
+        <div class="card-body">
+            <h5>{{ uploadData.title }} ({{ uploadData.subject }})</h5>
+            <p class="text-muted">Chapter ID: {{ chapterId }}</p>
+            <hr>
+            
+            <!-- Progress Simulation -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6>Reading Progress</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-warning" @click="simulateReading">
+                            Simulate Reading (95% Scroll)
+                        </button>
+                    </div>
+                    <small v-if="readStatus" class="text-success d-block mt-2">{{ readStatus }}</small>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Quiz Config -->
+            <div class="row">
+                <div class="col-md-12">
+                    <h6>Generate Quiz</h6>
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <select class="form-select" v-model="quizConfig.difficulty">
+                                <option value="easy">Easy</option>
+                                <option value="medium">Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-success" @click="generateQuiz" :disabled="loading">
+                                <span v-if="loading" class="loader me-2"></span> Generate via AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STEP 3: QUIZ INTERFACE -->
+    <div class="card step-card" v-if="step === 3">
+        <div class="card-header bg-warning text-dark">Step 3: Take Quiz</div>
+        <div class="card-body">
+            <div v-for="(q, index) in questions" :key="q.q_id" class="mb-4 border-bottom pb-3">
+                <p class="fw-bold">Q{{ index + 1 }}. {{ q.question }}</p>
+                
+                <!-- MCQ -->
+                <div v-if="q.type === 'mcq'">
+                    <div class="form-check" v-for="(opt, optIndex) in q.options" :key="optIndex">
+                        <input class="form-check-input" type="radio" :name="q.q_id" :value="optIndex" v-model="userAnswers[q.q_id]">
+                        <label class="form-check-label">{{ opt }}</label>
+                    </div>
+                </div>
+
+                <!-- Short / Numerical -->
+                <div v-else>
+                    <textarea class="form-control" rows="2" v-model="userAnswers[q.q_id]" placeholder="Type your answer here..."></textarea>
+                </div>
+            </div>
+
+            <button class="btn btn-danger w-100" @click="submitQuiz" :disabled="loading">
+                <span v-if="loading" class="loader me-2"></span> Submit & Grade
+            </button>
+        </div>
+    </div>
+
+    <!-- STEP 4: RESULTS -->
+    <div class="card step-card" v-if="step === 4">
+        <div class="card-header bg-info text-white">Step 4: Results & Analytics</div>
+        <div class="card-body">
+            <h3 class="text-center display-4">{{ results.total_score }} / {{ questions.length }}</h3>
+            <p class="text-center text-muted">Total Score</p>
+            
+            <div class="alert alert-warning" v-if="results.weak_topics && results.weak_topics.length > 0">
+                <strong>Weak Topics Identified:</strong> {{ JSON.parse(results.weak_topics).join(', ') }}
+            </div>
+
+            <h5>Detailed Feedback:</h5>
+            <div class="list-group">
+                <div v-for="(score, q_id) in JSON.parse(results.scores)" :key="q_id" class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Question ID: {{ q_id }}</span>
+                    <span class="badge rounded-pill" :class="score >= 0.5 ? 'text-bg-success' : 'text-bg-danger'">
+                        Score: {{ score }}
+                    </span>
+                </div>
+            </div>
+
+            <button class="btn btn-outline-primary mt-4 w-100" @click="reset">Start Over</button>
+        </div>
+    </div>
+
+    <!-- Debug Log -->
+    <div class="container mt-5">
+        <h6>Debug Logs (API Responses)</h6>
+        <div class="debug-box">
+            <div v-for="(log, i) in logs" :key="i">> {{ log }}</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const API_URL = 'http://127.0.0.1:8000'; // Make sure this matches your FastAPI port
+
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                step: 1,
+                loading: false,
+                userId: "demo-user-" + Math.floor(Math.random() * 1000), // Simulate User ID
+                uploadData: { subject: 'Science', title: 'Chapter 1', file: null },
+                chapterId: null,
+                readStatus: '',
+                quizConfig: { difficulty: 'medium' },
+                questions: [],
+                quizId: null,
+                userAnswers: {},
+                results: null,
+                logs: []
+            }
+        },
+        methods: {
+            log(msg) {
+                this.logs.unshift(JSON.stringify(msg));
+            },
+            handleFileUpload(event) {
+                this.uploadData.file = event.target.files[0];
+            },
+            async uploadChapter() {
+                if (!this.uploadData.file) return alert("Select a file");
+                this.loading = true;
+                
+                const formData = new FormData();
+                formData.append('file', this.uploadData.file);
+                formData.append('subject', this.uploadData.subject);
+                formData.append('title', this.uploadData.title);
+
+                try {
+                    const res = await fetch(`${API_URL}/api/chapters`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    this.chapterId = data.id;
+                    this.log(data);
+                    this.step = 2;
+                } catch (e) {
+                    alert("Upload Failed: " + e);
+                    console.error(e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+            async simulateReading() {
+                // Simulating: User spent 10 mins (600s) and scrolled 98%
+                try {
+                    const res = await fetch(`${API_URL}/api/chapters/${this.chapterId}/progress?user_id=${this.userId}&time_spent=600&scroll_pct=0.98`, {
+                        method: 'PUT'
+                    });
+                    const data = await res.json();
+                    this.readStatus = data.is_completed ? "✅ Chapter Marked as Completed!" : "In Progress...";
+                    this.log(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            },
+            async generateQuiz() {
+                this.loading = true;
+                try {
+                    const res = await fetch(`${API_URL}/api/quizzes/generate/${this.chapterId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            difficulty: this.quizConfig.difficulty,
+                            num_mcq: 3, // Lowered for faster demo
+                            num_short: 2,
+                            num_numerical: 1
+                        })
+                    });
+                    const data = await res.json();
+                    this.quizId = data.id;
+                    this.questions = JSON.parse(data.questions); // Parse the JSONB string
+                    this.log("Quiz Generated with " + this.questions.length + " questions");
+                    this.step = 3;
+                } catch (e) {
+                    alert("Quiz Generation Failed");
+                    console.error(e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+            async submitQuiz() {
+                this.loading = true;
+                try {
+                    const res = await fetch(`${API_URL}/api/quizzes/${this.quizId}/submit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: this.userId,
+                            answers: this.userAnswers
+                        })
+                    });
+                    const data = await res.json();
+                    this.results = data;
+                    this.log(data);
+                    this.step = 4;
+                } catch (e) {
+                    alert("Submission Failed");
+                } finally {
+                    this.loading = false;
+                }
+            },
+            reset() {
+                this.step = 1;
+                this.questions = [];
+                this.userAnswers = {};
+                this.results = null;
+                this.chapterId = null;
+            }
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
