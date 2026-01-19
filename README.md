@@ -4,7 +4,6 @@ An AI-powered learning platform that transforms PDF chapters into interactive qu
 
 ![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green?logo=fastapi)
-![Vue.js](https://img.shields.io/badge/Vue.js-3-brightgreen?logo=vuedotjs)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-blueviolet?logo=prisma)
 ![Gemini](https://img.shields.io/badge/Gemini-2.0-orange?logo=google)
 
